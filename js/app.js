@@ -1,6 +1,7 @@
 import * as store from './store.js';
 import { GOALS, SOTU, TOOLS, FEELINGS, STRENGTHS, CHALLENGES, FLOORS, PRACTICE_FLOOR, STATUS_LABEL } from './content.js';
 import { houseSvg, legendHtml } from './house.js';
+import { identify, normEmail } from './users.js';
 
 const $app = document.getElementById('app');
 const IDLE_MS = 5 * 60 * 1000;
@@ -38,6 +39,10 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 applyTheme();
 
 let msg = '';
+let okMsg = '';
+let screen = 'login'; // 'login' | 'forgot'
+const BAD_LOGIN = 'Email or passphrase not recognized.';
+const lastEmail = () => { try { return localStorage.getItem('mc_email') || ''; } catch { return ''; } };
 let draft = null;
 let timer = null;
 let sotuStep = 0;
@@ -69,11 +74,10 @@ function route() {
 
 function render() {
   clearInterval(timer);
-  const gated = !store.isUnlocked() || S().settings.mustChange || (!S().settings.names[0] && !S().settings.names[1]);
+  const gated = !store.isUnlocked() || S().settings.mustChange;
   document.body.classList.toggle('gated', gated); // landing screens show the big logo instead of the corner one
-  if (!store.isUnlocked()) return renderLock();
+  if (!store.isUnlocked()) return screen === 'forgot' ? renderForgot() : renderLock();
   if (S().settings.mustChange) return renderNewPass();
-  if (gated) return renderSetup();
   const { name, arg } = route();
   const views = { home, floor, checkin, sotu, tools, progress, parking, settings };
   const body = (views[name] || home)(arg);
@@ -84,16 +88,28 @@ function render() {
 
 // ---------- lock / setup ----------
 function renderLock() {
-  const first = !store.hasVault();
   $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1 class="sr">Marriage Check-In</h1>
-  <p class="muted">${first
-    ? 'Enter the starter passphrase to begin. You will then create your own private passphrase.'
-    : 'Enter your passphrase to unlock.'}</p>
-  <form data-form="${first ? 'start' : 'unlock'}">
-    <label class="lbl" for="p1">${first ? 'Starter passphrase' : 'Passphrase'}</label>
-    <input id="p1" type="password" autocomplete="${first ? 'off' : 'current-password'}" required>
+  <p class="muted">Sign in with your email address and passphrase. First time on this device? Use the starter passphrase, then you will create your own.</p>
+  <form data-form="login">
+    <label class="lbl" for="em">Email address</label>
+    <input id="em" name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required value="${esc(lastEmail())}">
+    <label class="lbl" for="p1">Passphrase</label>
+    <input id="p1" name="p1" type="password" autocomplete="current-password" required>
+    <p class="err">${esc(msg)}</p><p class="ok">${esc(okMsg)}</p>
+    <button type="submit">Sign in</button> <button type="button" class="ghost" data-act="forgot">Forgot passphrase?</button>
+  </form></div>`;
+  msg = ''; okMsg = '';
+}
+
+function renderForgot() {
+  $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1>Forgot your passphrase?</h1>
+  <p class="muted">Your data is encrypted with your passphrase, so nobody, including this app, can recover it. No email is sent and nothing leaves this device.</p>
+  <p class="muted">To start over: erase this device’s vault for your email, sign in again with the starter passphrase, create a new passphrase, then restore your history from a backup export or your partner’s export (Settings &rarr; Import).</p>
+  <form data-form="forgot">
+    <label class="lbl" for="em">Your email address</label>
+    <input id="em" name="email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false" required value="${esc(lastEmail())}">
     <p class="err">${esc(msg)}</p>
-    <button type="submit">${first ? 'Begin' : 'Unlock'}</button>
+    <button type="submit" class="danger">Erase this device’s vault</button> <button type="button" class="ghost" data-act="backToLogin">Back</button>
   </form></div>`;
   msg = '';
 }
@@ -110,17 +126,6 @@ function renderNewPass() {
     <button type="submit">Save my passphrase</button>
   </form><p class="muted">A few random words works well.</p></div>`;
   msg = '';
-}
-
-function renderSetup() {
-  $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1>Welcome</h1><p class="muted">Who is who? This stays on your device.</p>
-  <form data-form="setup">
-    <label class="lbl">Partner 1</label><input type="text" name="n0" value="Janet" required>
-    <label class="lbl">Partner 2</label><input type="text" name="n1" value="Matt" required>
-    <label class="lbl">Which one are you on THIS device?</label>
-    <select name="me"><option value="0">Partner 1</option><option value="1" selected>Partner 2</option></select>
-    <p></p><button type="submit">Continue</button>
-  </form></div>`;
 }
 
 // ---------- views ----------
@@ -279,10 +284,8 @@ function progress() {
 function settings() {
   const st = S().settings, n = names();
   return `<p><a href="#home">← Home</a></p><h1>Settings</h1>
-  <form class="card" data-form="settings"><label class="lbl">Partner 1</label><input type="text" name="n0" value="${esc(st.names[0])}">
-  <label class="lbl">Partner 2</label><input type="text" name="n1" value="${esc(st.names[1])}">
-  <label class="lbl">I am (on this device)</label><select name="me"><option value="0" ${st.me === 0 ? 'selected' : ''}>${esc(n[0])}</option><option value="1" ${st.me === 1 ? 'selected' : ''}>${esc(n[1])}</option></select>
-  <label class="lbl">Next session date</label><input type="date" name="next" value="${esc(st.nextSession)}">
+  <p class="muted">Signed in as <b>${esc(n[st.me])}</b> (${esc(store.currentEmail())}).</p>
+  <form class="card" data-form="settings"><label class="lbl">Next session date</label><input type="date" name="next" value="${esc(st.nextSession)}">
   <label class="lbl">Sessions since last goal review (of 5)</label><input type="number" name="ssr" min="0" max="20" value="${st.sessionsSinceReview}">
   <p></p><button type="submit">Save</button> <span class="ok">${esc(msg)}</span></form>
   <div class="card"><h3>Share &amp; back up</h3><p class="muted">Exports are encrypted with a passphrase you choose. Send the file to your partner by any channel (AirDrop, message, drive) and tell them the passphrase separately. Never commit exports to git.</p>
@@ -302,22 +305,33 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault();
   const kind = f.dataset.form, fd = new FormData(f);
   try {
-    if (kind === 'start') {
-      if (f.p1.value !== STARTER) { msg = 'That is not the starter passphrase.'; return renderLock(); }
-      await store.create(STARTER, true); startIdle(); render();
+    if (kind === 'login') {
+      const em = normEmail(f.email.value), pass = f.p1.value;
+      try { localStorage.setItem('mc_email', em); } catch {}
+      const user = await identify(em);
+      if (!user) { msg = BAD_LOGIN; return renderLock(); }
+      if (store.hasVault(em)) {
+        try { await store.unlock(em, pass); } catch { msg = BAD_LOGIN; return renderLock(); }
+      } else if (await store.migrateLegacy(em, pass, user)) {
+        // upgraded an older vault
+      } else if (pass === STARTER) {
+        await store.create(em, pass, user, true);
+      } else { msg = BAD_LOGIN; return renderLock(); }
+      startIdle(); render();
+    } else if (kind === 'forgot') {
+      const em = normEmail(f.email.value);
+      if (await identify(em)) store.wipe(em);
+      screen = 'login'; okMsg = 'If that address is registered, its vault on this device has been erased. Sign in with the starter passphrase to begin again.';
+      renderLock();
     } else if (kind === 'newpass') {
       const v = f.p1.value;
       if (v !== f.p2.value) { msg = 'Passphrases do not match.'; return renderNewPass(); }
       if (v.length < 10) { msg = 'Use at least 10 characters.'; return renderNewPass(); }
       if (v.toLowerCase() === STARTER.toLowerCase()) { msg = 'Choose something other than the starter passphrase.'; return renderNewPass(); }
       await store.changePass(v); render();
-    } else if (kind === 'unlock') {
-      try { await store.unlock(f.p1.value); startIdle(); render(); } catch { msg = 'Wrong passphrase.'; renderLock(); }
-    } else if (kind === 'setup' || kind === 'settings') {
+    } else if (kind === 'settings') {
       const s = S().settings;
-      s.names = [fd.get('n0').trim(), fd.get('n1').trim()];
-      s.me = Number(fd.get('me'));
-      if (kind === 'settings') { s.nextSession = fd.get('next') || ''; s.sessionsSinceReview = Number(fd.get('ssr')) || 0; msg = 'Saved.'; }
+      s.nextSession = fd.get('next') || ''; s.sessionsSinceReview = Number(fd.get('ssr')) || 0; msg = 'Saved.';
       await store.save(); render(); msg = '';
     } else if (kind === 'addIssue') {
       const id = crypto.randomUUID(), t = Date.now();
@@ -377,6 +391,8 @@ document.addEventListener('click', async (e) => {
     } else if (act === 'sotuPrev') { sotuStep = Math.max(0, sotuStep - 1); render(); }
     else if (act === 'delIssue') { const p = S().parking[el.dataset.id]; p.deleted = true; p.updatedAt = Date.now(); await store.save(); render(); }
     else if (act === 'print') window.print();
+    else if (act === 'forgot') { screen = 'forgot'; render(); }
+    else if (act === 'backToLogin') { screen = 'login'; render(); }
     else if (act === 'lock') { store.lock(); draft = null; render(); }
     else if (act === 'wipe') { if (confirm('Permanently erase ALL data on this device? This cannot be undone.')) { store.wipe(); draft = null; render(); } }
     else if (act === 'export') {
