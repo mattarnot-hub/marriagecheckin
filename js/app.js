@@ -15,6 +15,27 @@ function weekKey(d = new Date()) {
 }
 const niceWeek = (k) => new Date(k + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
+// ---------- theme (light / dark, remembered on this device) ----------
+const root = document.documentElement;
+const sysDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+const currentTheme = () => root.dataset.theme || (sysDark() ? 'dark' : 'light');
+function applyTheme(t) {
+  if (t) root.dataset.theme = t;
+  const dark = currentTheme() === 'dark';
+  const b = document.getElementById('theme');
+  b.textContent = dark ? '☀' : '☾';
+  b.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+  document.querySelector('meta[name="theme-color"]').content = dark ? '#150f22' : '#4B2882';
+}
+try { const t = localStorage.getItem('mc_theme'); if (t === 'light' || t === 'dark') root.dataset.theme = t; } catch {}
+document.getElementById('theme').addEventListener('click', () => {
+  const t = currentTheme() === 'dark' ? 'light' : 'dark';
+  applyTheme(t);
+  try { localStorage.setItem('mc_theme', t); } catch {}
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
+applyTheme();
+
 let msg = '';
 let draft = null;
 let timer = null;
