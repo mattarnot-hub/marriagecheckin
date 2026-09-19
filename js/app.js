@@ -4,6 +4,7 @@ import { houseSvg, legendHtml } from './house.js';
 
 const $app = document.getElementById('app');
 const IDLE_MS = 5 * 60 * 1000;
+const STARTER = 'Apple'; // starter passphrase: only opens an empty vault that must be re-keyed immediately
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pad = (n) => String(n).padStart(2, '0');
@@ -68,9 +69,10 @@ function route() {
 
 function render() {
   clearInterval(timer);
-  const gated = !store.isUnlocked() || (!S().settings.names[0] && !S().settings.names[1]);
+  const gated = !store.isUnlocked() || S().settings.mustChange || (!S().settings.names[0] && !S().settings.names[1]);
   document.body.classList.toggle('gated', gated); // landing screens show the big logo instead of the corner one
   if (!store.isUnlocked()) return renderLock();
+  if (S().settings.mustChange) return renderNewPass();
   if (gated) return renderSetup();
   const { name, arg } = route();
   const views = { home, floor, checkin, sotu, tools, progress, parking, settings };
@@ -85,16 +87,28 @@ function renderLock() {
   const first = !store.hasVault();
   $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1 class="sr">Marriage Check-In</h1>
   <p class="muted">${first
-    ? 'Create a passphrase. Your answers are encrypted with it and stay on this device only. <b>There is no way to recover a forgotten passphrase</b>, so make a backup export once you have data.'
+    ? 'Enter the starter passphrase to begin. You will then create your own private passphrase.'
     : 'Enter your passphrase to unlock.'}</p>
-  <form data-form="${first ? 'create' : 'unlock'}">
-    <label class="lbl" for="p1">Passphrase</label>
-    <input id="p1" type="password" autocomplete="${first ? 'new-password' : 'current-password'}" required minlength="${first ? 10 : 1}">
-    ${first ? '<label class="lbl" for="p2">Confirm passphrase</label><input id="p2" type="password" autocomplete="new-password" required>' : ''}
+  <form data-form="${first ? 'start' : 'unlock'}">
+    <label class="lbl" for="p1">${first ? 'Starter passphrase' : 'Passphrase'}</label>
+    <input id="p1" type="password" autocomplete="${first ? 'off' : 'current-password'}" required>
     <p class="err">${esc(msg)}</p>
-    <button type="submit">${first ? 'Create private vault' : 'Unlock'}</button>
-  </form>
-  ${first ? '<p class="muted">Use at least 10 characters. A few random words works well.</p>' : ''}</div>`;
+    <button type="submit">${first ? 'Begin' : 'Unlock'}</button>
+  </form></div>`;
+  msg = '';
+}
+
+function renderNewPass() {
+  $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1>Create your own passphrase</h1>
+  <p class="muted">Your answers are encrypted with it and stay on this device only. <b>There is no way to recover a forgotten passphrase</b>, so keep it somewhere safe and make a backup export once you have data.</p>
+  <form data-form="newpass">
+    <label class="lbl" for="p1">New passphrase (10+ characters)</label>
+    <input id="p1" type="password" autocomplete="new-password" required minlength="10">
+    <label class="lbl" for="p2">Confirm passphrase</label>
+    <input id="p2" type="password" autocomplete="new-password" required>
+    <p class="err">${esc(msg)}</p>
+    <button type="submit">Save my passphrase</button>
+  </form><p class="muted">A few random words works well.</p></div>`;
   msg = '';
 }
 
@@ -288,9 +302,15 @@ document.addEventListener('submit', async (e) => {
   e.preventDefault();
   const kind = f.dataset.form, fd = new FormData(f);
   try {
-    if (kind === 'create') {
-      if (f.p1.value !== f.p2.value) { msg = 'Passphrases do not match.'; return renderLock(); }
-      await store.create(f.p1.value); startIdle(); render();
+    if (kind === 'start') {
+      if (f.p1.value !== STARTER) { msg = 'That is not the starter passphrase.'; return renderLock(); }
+      await store.create(STARTER, true); startIdle(); render();
+    } else if (kind === 'newpass') {
+      const v = f.p1.value;
+      if (v !== f.p2.value) { msg = 'Passphrases do not match.'; return renderNewPass(); }
+      if (v.length < 10) { msg = 'Use at least 10 characters.'; return renderNewPass(); }
+      if (v.toLowerCase() === STARTER.toLowerCase()) { msg = 'Choose something other than the starter passphrase.'; return renderNewPass(); }
+      await store.changePass(v); render();
     } else if (kind === 'unlock') {
       try { await store.unlock(f.p1.value); startIdle(); render(); } catch { msg = 'Wrong passphrase.'; renderLock(); }
     } else if (kind === 'setup' || kind === 'settings') {

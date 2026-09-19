@@ -8,7 +8,7 @@ let state = null;
 
 const blank = () => ({
   v: 1,
-  settings: { names: ['', ''], me: 0, nextSession: '', sessionsSinceReview: 0 },
+  settings: { names: ['', ''], me: 0, nextSession: '', sessionsSinceReview: 0, mustChange: false },
   checkins: {}, // id `${week}-${who}` -> entry
   done: {}, // `${week}|${practiceId}|${who}` -> true
   parking: {}, // id -> issue
@@ -23,10 +23,19 @@ async function persist() {
   localStorage.setItem(KEY, JSON.stringify({ v: 1, salt: b64(salt), ...blob }));
 }
 
-export async function create(pass) {
+export async function create(pass, mustChange = false) {
   salt = randomSalt();
   key = await deriveKey(pass, salt);
   state = blank();
+  state.settings.mustChange = mustChange;
+  await persist();
+}
+
+// Re-encrypt the vault under a new passphrase (fresh salt).
+export async function changePass(pass) {
+  salt = randomSalt();
+  key = await deriveKey(pass, salt);
+  state.settings.mustChange = false;
   await persist();
 }
 

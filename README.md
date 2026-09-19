@@ -6,6 +6,7 @@ A private, no-backend weekly check-in app built from our therapy goals and Gottm
 - The repo and GitHub Pages site contain **only app code and generic content**, never personal answers.
 - Answers are encrypted in the browser (PBKDF2-SHA256, 600k iterations, then AES-GCM-256) and stored only in that browser's localStorage.
 - Strict Content-Security-Policy: no network requests, no third-party scripts, no analytics.
+- First launch uses a starter passphrase that only opens an empty vault and immediately forces you to create your own (10+ characters), which re-encrypts the vault. The starter passphrase is in the public code, so never enter data before setting your own.
 - Auto-locks after 5 minutes idle. There is **no passphrase recovery**.
 - Share between phones with **encrypted export/import** (Settings). Give the passphrase separately. Exports are git-ignored.
 
