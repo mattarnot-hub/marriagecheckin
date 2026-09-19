@@ -1,0 +1,8 @@
+# Never commit personal data or exports
+checkin-export-*.json
+*export*.json
+*.backup
+*.vault
+.env
+node_modules/
+.DS_Store
