@@ -1,5 +1,6 @@
 import * as store from './store.js';
-import { GOALS, SOTU, TOOLS, FEELINGS, STRENGTHS, CHALLENGES } from './content.js';
+import { GOALS, SOTU, TOOLS, FEELINGS, STRENGTHS, CHALLENGES, FLOORS, PRACTICE_FLOOR, STATUS_LABEL } from './content.js';
+import { houseSvg, legendHtml, logoSvg } from './house.js';
 
 const $app = document.getElementById('app');
 const IDLE_MS = 5 * 60 * 1000;
@@ -25,10 +26,16 @@ const names = () => S().settings.names.map((n, i) => n || `Partner ${i + 1}`);
 const me = () => S().settings.me;
 
 // ---------- router ----------
+const ALL = GOALS.flatMap((g) => g.practices);
+const floorProgress = (id) => {
+  const ps = ALL.filter((p) => PRACTICE_FLOOR[p.id] === id);
+  return [ps.filter((p) => S().done[`${weekKey()}|${p.id}|${me()}`]).length, ps.length];
+};
+
 const NAV = [
-  ['home', '♥', 'This Week'],
+  ['home', '⌂', 'House'],
   ['checkin', '✎', 'Check-In'],
-  ['sotu', '☕', 'Talk'],
+  ['sotu', '◎', 'Talk'],
   ['tools', '⚒', 'Tools'],
   ['progress', '↗', 'Progress'],
 ];
@@ -43,7 +50,7 @@ function render() {
   if (!store.isUnlocked()) return renderLock();
   if (!S().settings.names[0] && !S().settings.names[1]) return renderSetup();
   const { name, arg } = route();
-  const views = { home, checkin, sotu, tools, progress, parking, settings };
+  const views = { home, floor, checkin, sotu, tools, progress, parking, settings };
   const body = (views[name] || home)(arg);
   const nav = NAV.map(([k, ic, l]) => `<a href="#${k}" class="${name === k ? 'on' : ''}"><span>${ic}</span>${l}</a>`).join('');
   $app.innerHTML = `${body}<nav class="nav"><div class="nav-in">${nav}</div></nav>`;
@@ -53,7 +60,7 @@ function render() {
 // ---------- lock / setup ----------
 function renderLock() {
   const first = !store.hasVault();
-  $app.innerHTML = `<div class="lock"><h1>Marriage Check-In</h1>
+  $app.innerHTML = `<div class="lock">${logoSvg()}<h1>Marriage Check-In</h1>
   <p class="muted">${first
     ? 'Create a passphrase. Your answers are encrypted with it and stay on this device only. <b>There is no way to recover a forgotten passphrase</b>, so make a backup export once you have data.'
     : 'Enter your passphrase to unlock.'}</p>
@@ -69,7 +76,7 @@ function renderLock() {
 }
 
 function renderSetup() {
-  $app.innerHTML = `<div class="lock"><h1>Welcome</h1><p class="muted">Who is who? This stays on your device.</p>
+  $app.innerHTML = `<div class="lock">${logoSvg()}<h1>Welcome</h1><p class="muted">Who is who? This stays on your device.</p>
   <form data-form="setup">
     <label class="lbl">Partner 1</label><input type="text" name="n0" value="Janet" required>
     <label class="lbl">Partner 2</label><input type="text" name="n1" value="Matt" required>
@@ -82,6 +89,24 @@ function renderSetup() {
 // ---------- views ----------
 function pri(p) { return p.priority ? `<span class="tag">${p.priority === 1 ? '★ priority' : '★★ priority'}</span>` : ''; }
 
+function practiceRow(p) {
+  const k = `${weekKey()}|${p.id}|${me()}`;
+  return `<label class="check"><input type="checkbox" data-change="toggle" data-id="${p.id}" ${S().done[k] ? 'checked' : ''}>
+      <span>${pri(p)}${esc(p.text)} ${TOOLS[p.tool] ? `<a href="#tools/${p.tool}">how</a>` : ''}</span></label>`;
+}
+
+function floor(id) {
+  const f = FLOORS.find((x) => x.id === id) || FLOORS[0];
+  const ps = ALL.filter((p) => PRACTICE_FLOOR[p.id] === f.id);
+  const [done, total] = floorProgress(f.id);
+  return `<p><a href="#home">← The house</a></p><h1>${esc(f.title)}</h1>
+  <p><span class="tag st-${f.status}">${STATUS_LABEL[f.status]}</span>${total ? `<span class="muted">${done} of ${total} practices this week</span>` : ''}</p>
+  <p>${esc(f.desc)}</p>
+  <div class="card"><h3>Your Gottman Checkup</h3><p>${esc(f.note)}</p></div>
+  ${ps.length ? `<h2>This week</h2><div class="card">${ps.map(practiceRow).join('')}</div>` : '<p class="muted">No weekly practice is assigned to this floor. Keep it strong by appreciating it out loud.</p>'}
+  ${f.tools.length ? `<h2>Tools</h2>${f.tools.map((k) => `<a class="card" href="#tools/${k}"><h3>${esc(TOOLS[k].title)}</h3><p class="muted">${esc(TOOLS[k].blurb)}</p></a>`).join('')}` : ''}`;
+}
+
 function home() {
   const st = S(), w = weekKey(), n = names(), m = me();
   const all = GOALS.flatMap((g) => g.practices);
@@ -89,10 +114,10 @@ function home() {
   const mine = st.checkins[`${w}-${m}`], theirs = st.checkins[`${w}-${1 - m}`];
   const next = st.settings.nextSession;
   const left = 5 - (st.settings.sessionsSinceReview % 5);
-  const goals = GOALS.map((g) => `<div class="card"><h3>${esc(g.title)}</h3><p class="muted">${esc(g.area)}</p>
-    ${g.practices.map((p) => `<label class="check"><input type="checkbox" data-change="toggle" data-id="${p.id}" ${st.done[`${w}|${p.id}|${m}`] ? 'checked' : ''}>
-      <span>${pri(p)}${esc(p.text)} ${TOOLS[p.tool] ? `<a href="#tools/${p.tool}">how</a>` : ''}</span></label>`).join('')}</div>`).join('');
-  return `<h1>Hi ${esc(n[m])}</h1><p class="muted">Week of ${niceWeek(w)}</p>
+  const goals = GOALS.map((g) => `<div class="card"><h3>${esc(g.title)}</h3><p class="muted">${esc(g.area)}</p>${g.practices.map(practiceRow).join('')}</div>`).join('');
+  return `<h1>Hi ${esc(n[m])}</h1><p class="muted">Week of ${niceWeek(w)}. Tap any floor of our house.</p>
+  <div class="house">${houseSvg(floorProgress)}</div>${legendHtml()}
+  <p class="muted"></p>
   <div class="card"><div class="row"><div class="grow"><b>${doneCount} of ${all.length}</b> practices this week</div>
   <a class="btn ${mine ? 'ghost' : ''}" href="#checkin">${mine ? 'Edit check-in' : 'Do check-in (5 min)'}</a></div>
   <p class="muted">${esc(n[1 - m])}: ${theirs ? 'checked in ✓' : 'no check-in yet (import their export to see it)'}</p></div>
@@ -266,7 +291,9 @@ document.addEventListener('change', async (e) => {
     const k = `${weekKey()}|${el.dataset.id}|${me()}`;
     if (el.checked) S().done[k] = true; else delete S().done[k];
     await store.save();
+    const y = window.scrollY;
     render();
+    window.scrollTo(0, y);
   } else if (el.dataset.change === 'field') draft[el.dataset.f] = el.value;
 });
 

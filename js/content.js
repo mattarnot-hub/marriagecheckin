@@ -147,3 +147,44 @@ export const FEELINGS = [
   ['Scared', 'anxious, overwhelmed, insecure, helpless, worried'],
   ['Glad', 'grateful, proud, connected, hopeful, relieved'],
 ];
+
+// ---- Sound Relationship House ----
+// status: strength | mixed | growth | none (none = not stated in the text of the checkup report; edit as you like)
+export const FLOORS = [
+  { id: 'meaning', title: 'Create Shared Meaning', status: 'none', tools: ['rituals'],
+    desc: 'A life with shared purpose: rituals of connection, supporting each other’s roles, shared goals and shared symbols (what "home" means, values, philosophy of life).',
+    note: 'No rating found in the text of your report. Rituals of connection is one of your therapy goals.' },
+  { id: 'dreams', title: 'Make Life Dreams Come True', status: 'none', tools: ['parking'],
+    desc: 'Each of you can talk honestly about dreams, values and aspirations and feels the relationship supports them. Perpetual problems usually hide a dream.',
+    note: 'No rating found in the text of your report. Gridlocked issues (money, school) are a therapy goal, and the dream under each position is the key.' },
+  { id: 'conflict', title: 'Manage Conflict', status: 'mixed', tools: ['startup', 'flooding', 'repair', 'compromise', 'safety', 'aftermath'],
+    desc: 'Accept your partner’s influence, dialogue about problems (69% are perpetual), and practice self-soothing. Masters start gently, repair, use humor and affection, and compromise.',
+    note: 'Strength: you are careful and respectful in how you manage conflict. Challenges: Harsh Startup, Flooding, Accepting Influence, Compromise, Repair Attempts.' },
+  { id: 'positive', title: 'The Positive Perspective', status: 'none', tools: ['ratio'],
+    desc: 'Positive Sentiment Override: positive feelings about your partner outweigh their occasional negatives, so you don’t take slips personally. It grows when the three floors below are working.',
+    note: 'No rating found in the text of your report. It follows from the friendship floors below.' },
+  { id: 'turn', title: 'Turn Towards Instead of Away', status: 'growth', tools: ['bids', 'stress'],
+    desc: 'Partners make bids for attention, affection and support. Turning toward them is like depositing into an emotional bank account.',
+    note: 'Challenge: you feel alone, in that what you say will either not be responded to, or lashed out against.' },
+  { id: 'fondness', title: 'Share Fondness and Admiration', status: 'strength', tools: ['dates'],
+    desc: 'Notice and express what you appreciate; catch your partner doing something right and say so, verbally and non-verbally.',
+    note: 'Strength: you believe your partner has positive feelings for you and respects you.' },
+  { id: 'lovemaps', title: 'Build Love Maps', status: 'strength', tools: ['lovemaps', 'meta'],
+    desc: 'Know your partner’s inner world: thoughts, worries, hopes, dreams and values. Built by asking open-ended questions and remembering the answers.',
+    note: 'Strength: you believe you know your partner well and feel known. You are interested in updating your love maps.' },
+  { id: 'trust', title: 'Trust', status: 'strength', tools: ['betrayal'],
+    desc: 'A weight-bearing wall. Each partner acts to benefit the other, not just themselves: "Will you be there for me?"',
+    note: 'Strength: you believe you can trust your partner to have your back and your best interest at heart.' },
+  { id: 'commitment', title: 'Commitment', status: 'strength', tools: [],
+    desc: 'A weight-bearing wall. Each partner sees the relationship as a lifelong journey, is loyal, and cherishes the other.',
+    note: 'Strength: you are loyal to one another.' },
+];
+
+// Which floor each weekly practice builds
+export const PRACTICE_FLOOR = {
+  'g1-gentle': 'conflict', 'g1-stonewall': 'conflict', 'g1-flood': 'conflict', 'g1-safety': 'conflict',
+  'g1-aftermath': 'conflict', 'g1-gridlock': 'dreams', 'g1-compromise': 'conflict', 'g1-betrayal': 'trust',
+  'g2-ratio': 'positive', 'g2-repair': 'conflict', 'g2-meta': 'lovemaps', 'g2-stress': 'turn',
+  'g3-bids': 'turn', 'g3-sotu': 'lovemaps', 'g3-date': 'fondness', 'g3-ritual': 'meaning',
+};
+export const STATUS_LABEL = { strength: 'Strength', mixed: 'Mixed', growth: 'Growth area', none: 'Not rated' };
