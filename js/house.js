@@ -60,5 +60,3 @@ export function houseSvg(prog) {
 }
 
 export const legendHtml = () => `<div class="legend"><span><i class="i-strength"></i>Strength</span><span><i class="i-mixed"></i>Mixed</span><span><i class="i-growth"></i>Growth area</span><span><i class="i-none"></i>Not rated</span></div>`;
-
-export const logoSvg = () => `<svg class="logo" viewBox="0 0 64 64" role="img" aria-label="House logo"><path d="M32 6 L58 28 V58 H6 V28 Z" fill="none" stroke="#4B2882" stroke-width="4" stroke-linejoin="round"/><rect x="11" y="30" width="7" height="26" fill="#00693E"/><rect x="46" y="30" width="7" height="26" fill="#00693E"/><path d="M22 30 H42 M22 38 H42 M22 46 H42" stroke="#4B2882" stroke-width="3" stroke-linecap="round"/></svg>`;

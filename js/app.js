@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { GOALS, SOTU, TOOLS, FEELINGS, STRENGTHS, CHALLENGES, FLOORS, PRACTICE_FLOOR, STATUS_LABEL } from './content.js';
-import { houseSvg, legendHtml, logoSvg } from './house.js';
+import { houseSvg, legendHtml } from './house.js';
 
 const $app = document.getElementById('app');
 const IDLE_MS = 5 * 60 * 1000;
@@ -68,8 +68,10 @@ function route() {
 
 function render() {
   clearInterval(timer);
+  const gated = !store.isUnlocked() || (!S().settings.names[0] && !S().settings.names[1]);
+  document.body.classList.toggle('gated', gated); // landing screens show the big logo instead of the corner one
   if (!store.isUnlocked()) return renderLock();
-  if (!S().settings.names[0] && !S().settings.names[1]) return renderSetup();
+  if (gated) return renderSetup();
   const { name, arg } = route();
   const views = { home, floor, checkin, sotu, tools, progress, parking, settings };
   const body = (views[name] || home)(arg);
@@ -81,7 +83,7 @@ function render() {
 // ---------- lock / setup ----------
 function renderLock() {
   const first = !store.hasVault();
-  $app.innerHTML = `<div class="lock">${logoSvg()}<h1>Marriage Check-In</h1>
+  $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1 class="sr">Marriage Check-In</h1>
   <p class="muted">${first
     ? 'Create a passphrase. Your answers are encrypted with it and stay on this device only. <b>There is no way to recover a forgotten passphrase</b>, so make a backup export once you have data.'
     : 'Enter your passphrase to unlock.'}</p>
@@ -97,7 +99,7 @@ function renderLock() {
 }
 
 function renderSetup() {
-  $app.innerHTML = `<div class="lock">${logoSvg()}<h1>Welcome</h1><p class="muted">Who is who? This stays on your device.</p>
+  $app.innerHTML = `<div class="lock"><img class="hero" src="assets/logo.png" alt="Marriage Check-In" width="600" height="402"><h1>Welcome</h1><p class="muted">Who is who? This stays on your device.</p>
   <form data-form="setup">
     <label class="lbl">Partner 1</label><input type="text" name="n0" value="Janet" required>
     <label class="lbl">Partner 2</label><input type="text" name="n1" value="Matt" required>
